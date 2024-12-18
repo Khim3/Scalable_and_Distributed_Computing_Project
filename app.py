@@ -2,8 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import altair as alt
-from pyspark.ml.regression import LinearRegressionModel
-from pyspark.ml.regression import DecisionTreeRegressor,  DecisionTreeRegressionModel
+from pyspark.ml.regression import LinearRegressionModel, DecisionTreeRegressor,  DecisionTreeRegressionModel
 from pyspark import SparkContext
 from pyspark.sql import SparkSession
 from pyspark.ml import Pipeline
@@ -11,7 +10,7 @@ from pyspark.sql.functions import col, udf
 import torch
 from pyspark.ml.feature import VectorAssembler
 from pyspark.sql.types import ArrayType, DoubleType
-
+from pyspark.ml.evaluation import RegressionEvaluator
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def initialize_spark():
@@ -64,22 +63,18 @@ def load_model(chosen_model):
             model = torch.load(path)
             model = model.to(device)
             
-        # Load the PySpark model
-        #st.success(f'Model successfully loaded from {path}')
+        if model:
+            st.sidebar.success(f'Model successfully loaded from {path}')
         return model
     except Exception as e:
         st.sidebar.error(f'Failed to load model. Error: {e}')
         return None
     
 
-def load_data_for_prediction(spark, option):
+def load_data_for_prediction(spark, option, num_days=None):
     try:
         # Load the test data
         data_test = spark.read.csv('./test.csv', header=True, inferSchema=True)
-
-        # Print schema for debugging
-       # st.write("Schema of test data:")
-       # st.text(data_test.printSchema())
 
         # Define the feature columns
         feature_columns = ["Open", "High", "Low", "Volume"]
@@ -95,20 +90,21 @@ def load_data_for_prediction(spark, option):
             data_test = data_test.orderBy(col("features")).limit(7)
         elif option == '1 month':
             data_test = data_test.orderBy(col("features")).limit(30)
+        elif option == 'Custom' and num_days:
+            data_test = data_test.orderBy(col("features")).limit(num_days)
         else:
-            st.write("Custom input not implemented.")
+            st.error("Invalid option or number of days not specified.")
 
         # Return the processed DataFrame
         return data_test
     except Exception as e:
         st.error(f"Failed to load data for prediction. Error: {e}")
         return None
-
     
-def predict(spark, option, chosen_model):
+def predict(spark, option, chosen_model, num_days=None):
     try:
         # Load and prepare test data
-        data_test = load_data_for_prediction(spark, option)
+        data_test = load_data_for_prediction(spark, option, num_days)
         if not data_test:
             return
 
@@ -124,12 +120,30 @@ def predict(spark, option, chosen_model):
         vector_to_array_udf = udf(lambda vector: vector.toArray().tolist(), ArrayType(DoubleType()))
         predictions = predictions.withColumn("features_array", vector_to_array_udf(col("features")))
 
+        # Rename the true value column ('Close') to 'label' for evaluation compatibility
+        predictions = predictions.withColumnRenamed("Close", "label")
+
+        # Calculate evaluation metrics
+        evaluator = RegressionEvaluator(labelCol="label", predictionCol="prediction")
+
+        mse = evaluator.evaluate(predictions, {evaluator.metricName: "mse"})
+        rmse = evaluator.evaluate(predictions, {evaluator.metricName: "rmse"})
+        mae = evaluator.evaluate(predictions, {evaluator.metricName: "mae"})
+        r2 = evaluator.evaluate(predictions, {evaluator.metricName: "r2"})
+
+        # Log metrics to Streamlit
+        st.write(f"**Mean Squared Error (MSE):** {mse:.4f}")
+        st.write(f"**Root Mean Squared Error (RMSE):** {rmse:.4f}")
+        st.write(f"**Mean Absolute Error (MAE):** {mae:.4f}")
+        st.write(f"**R-squared (R2):** {r2:.4f}")
+
         # Select and display predictions
-        predictions_df = predictions.select("features_array", "prediction").toPandas()
+        predictions_df = predictions.select('Date',"features_array", "prediction", "label").toPandas()
+
+        predictions_df = predictions_df.sort_values(by="Date")
         st.write(predictions_df)
     except Exception as e:
         st.error(f"Failed to predict. Error: {e}")
-        
 # def prepare_features(data_test):
 #     if "features" in data_test.columns:
 #         data_test = data_test.drop("features")
@@ -153,14 +167,15 @@ def main():
     st.sidebar.title('User Input Features')
     chosen_model = st.sidebar.selectbox('Select Algorithm', ('Linear Regression', 'Decision Tree Regressor'))
     option = st.sidebar.radio('Choose a forecast period:', ['1 day', '1 week', '1 month', 'Custom'])
-
+    
+    num_days = None
     if option == 'Custom':
         num_days = st.sidebar.number_input('Number of days:', min_value=1, value=5)
         st.sidebar.write(f"Forecasting for {num_days} days.")
 
     if st.sidebar.button('Predict'):
-        prediction =predict(spark, option, chosen_model)
-        st.write(prediction)
+        prediction =predict(spark, option, chosen_model, num_days)
+      
     
 if __name__ == '__main__':
     torch.cuda.empty_cache()
