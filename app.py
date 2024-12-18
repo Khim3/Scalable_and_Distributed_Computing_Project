@@ -3,9 +3,11 @@ import pandas as pd
 import plotly.express as px
 import altair as alt
 from pyspark.ml.regression import LinearRegressionModel
+from pyspark.ml.regression import DecisionTreeRegressor,  DecisionTreeRegressionModel
 from pyspark import SparkContext
 from pyspark.sql import SparkSession
 from pyspark.ml import Pipeline
+import torch
 
 def initialize_spark():
     try:
@@ -42,9 +44,14 @@ def load_model(chosen_model):
             path = 'models/linear_regressor'
             model = LinearRegressionModel.load(path)
 
-        else:
-            path = 'models/lstm'
-            model = Pipeline.load(path)
+        elif chosen_model == 'Decision Tree Regressor':
+            path = 'models/decision_tree_regressor'
+            model = DecisionTreeRegressionModel.load("models/decision_tree_regressor")
+            
+        elif chosen_model == 'LSTM':
+            path = 'models/lstm.pth'
+            model = torch.load(path).to(torch.device('cuda'))
+            
         # Load the PySpark model
         #st.success(f'Model successfully loaded from {path}')
         return model
@@ -62,7 +69,7 @@ def main():
     st.sidebar.info('Welcome to the Stock Price Predictor App!')
   
     
-    chosen_model = st.sidebar.selectbox('Select Algorithm', ('Linear Regression', 'SVM Regressor', 'LSTM'))
+    chosen_model = st.sidebar.selectbox('Select Algorithm', ('Linear Regression', 'Decision Tree Regressor', 'LSTM'))
     load_model(chosen_model)
     st.sidebar.markdown("---")
   
