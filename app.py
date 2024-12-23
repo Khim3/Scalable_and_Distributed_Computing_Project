@@ -76,6 +76,14 @@ def load_data_for_prediction(spark, option, num_days=None):
         # Load the test data
         data_test = spark.read.csv('./test.csv', header=True, inferSchema=True)
 
+        # Ensure the 'Date' column exists and is of type String or Date
+        if "Date" not in data_test.columns:
+            st.error("The 'Date' column is missing in the input data.")
+            return None
+
+        # Convert 'Date' column to a valid DateType if it's not already
+        data_test = data_test.withColumn("Date", col("Date").cast("date"))
+
         # Define the feature columns
         feature_columns = ["Open", "High", "Low", "Volume"]
 
@@ -83,15 +91,16 @@ def load_data_for_prediction(spark, option, num_days=None):
         assembler = VectorAssembler(inputCols=feature_columns, outputCol="features")
         data_test = assembler.transform(data_test)
 
-        # Filter or sort based on the option
-        if option == '1 day':
-            data_test = data_test.orderBy(col("features")).limit(1)
-        elif option == '1 week':
-            data_test = data_test.orderBy(col("features")).limit(7)
+        # Order by 'Date' and apply limits based on the selected option
+        data_test = data_test.orderBy(col("Date").asc())
+        if option == '1 week':
+            data_test = data_test.limit(7)
+        elif option == '2 weeks':
+            data_test = data_test.limit(14)
         elif option == '1 month':
-            data_test = data_test.orderBy(col("features")).limit(30)
+            data_test = data_test.limit(30)
         elif option == 'Custom' and num_days:
-            data_test = data_test.orderBy(col("features")).limit(num_days)
+            data_test = data_test.limit(num_days)
         else:
             st.error("Invalid option or number of days not specified.")
 
@@ -100,14 +109,14 @@ def load_data_for_prediction(spark, option, num_days=None):
     except Exception as e:
         st.error(f"Failed to load data for prediction. Error: {e}")
         return None
+
     
 def predict(spark, option, chosen_model, num_days=None):
     try:
         # Load and prepare test data
         data_test = load_data_for_prediction(spark, option, num_days)
-        if not data_test:
-            return
 
+        print(data_test.show(n =15))
         # Load the model
         model = load_model(chosen_model)
         if not model:
@@ -144,14 +153,7 @@ def predict(spark, option, chosen_model, num_days=None):
         st.write(predictions_df)
     except Exception as e:
         st.error(f"Failed to predict. Error: {e}")
-# def prepare_features(data_test):
-#     if "features" in data_test.columns:
-#         data_test = data_test.drop("features")
-#     feature_columns = ["Open", "High", "Low", "Volume"]
-#     assembler = VectorAssembler(inputCols=feature_columns, outputCol="features")
-#     df = assembler.transform(data_test).select("features", col("Close").alias("label"))
-#     return df
-   
+
         
 def main():
     st.markdown("<h1 style='text-align: center;'>Stock Price Predictions</h1>", unsafe_allow_html=True)
@@ -166,12 +168,12 @@ def main():
     
     st.sidebar.title('User Input Features')
     chosen_model = st.sidebar.selectbox('Select Algorithm', ('Linear Regression', 'Decision Tree Regressor'))
-    option = st.sidebar.radio('Choose a forecast period:', ['1 day', '1 week', '1 month', 'Custom'])
+    option = st.sidebar.radio('Choose a forecast period:', [ '1 week','2 weeks', '1 month', 'Custom'])
     
     num_days = None
     if option == 'Custom':
         num_days = st.sidebar.number_input('Number of days:', min_value=1, value=5)
-        st.sidebar.write(f"Forecasting for {num_days} days.")
+        st.sidebar.info(f"Forecasting for {num_days} days.")
 
     if st.sidebar.button('Predict'):
         prediction =predict(spark, option, chosen_model, num_days)
