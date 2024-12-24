@@ -71,11 +71,11 @@ def load_data_for_prediction(spark, option, num_days=None):
         data_test = assembler.transform(data_test)
 
         data_test = data_test.orderBy(col("Date").asc())
-        if option == '1 week':
+        if option == '7 days':
             data_test = data_test.limit(7)
-        elif option == '2 weeks':
+        elif option == '14 days':
             data_test = data_test.limit(14)
-        elif option == '1 month':
+        elif option == '30 days':
             data_test = data_test.limit(30)
         elif option == 'Custom' and num_days:
             data_test = data_test.limit(num_days)
@@ -115,10 +115,70 @@ def predict(spark, option, chosen_model, num_days=None):
         predictions_df = predictions.select("Date", "features_array", "prediction", "label").toPandas()
         predictions_df = predictions_df.sort_values(by="Date")
         predictions_df = predictions_df.drop(columns="features_array")
+        st.write(predictions_df)
         return predictions_df
     except Exception as e:
         st.error(f"Failed to predict. Error: {e}")
         return None
+
+def plot_predictions_overview(dataframe, num_days):
+    try:
+        # Load the original test dataset
+        test = pd.read_csv('./test.csv')
+
+        # Ensure the Date column is in the same format for merging
+        test["Date"] = pd.to_datetime(test["Date"])
+        dataframe["Date"] = pd.to_datetime(dataframe["Date"])
+
+        # Filter the test data to include only dates present in the predictions
+        filtered_test = test[test["Date"].isin(dataframe["Date"])]
+
+        # Merge predictions with the filtered test data
+        merged_data = pd.merge(filtered_test, dataframe, on="Date", how="inner")
+
+        # Plot actual vs predicted values using Plotly
+        fig = go.Figure()
+
+        # Add actual values (Close prices) to the plot
+        fig.add_trace(go.Scatter(
+            x=merged_data["Date"],
+            y=merged_data["Close"],  # Original Close column from test.csv
+            mode='lines',
+            name='Actual Close Price',
+            line=dict(color='green', width=2)
+        ))
+
+        # Add predicted values to the plot
+        fig.add_trace(go.Scatter(
+            x=merged_data["Date"],
+            y=merged_data["prediction"],  # Predicted Close prices
+            mode='lines',
+            name='Predicted Close Price',
+            line=dict(color='red', width=2, dash='dot')
+        ))
+
+        if num_days == 'Custom':
+        # Update layout
+            fig.update_layout(
+                title=f"Actual vs Predicted Stock Closing Prices for the next {num_days}",
+                xaxis_title="Date",
+                yaxis_title="Closing Price",
+                legend=dict(x=0, y=1),
+                template="plotly_white"
+            )
+        else:
+            fig.update_layout(
+            title=f"Actual vs Predicted Stock Closing Prices for the next {num_days}",
+            xaxis_title="Date",
+            yaxis_title="Closing Price",
+            legend=dict(x=0, y=1),
+            template="plotly_white"
+        )
+
+        # Display the plot in Streamlit
+        st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        st.error(f"Failed to plot data. Error: {e}")
 
 def plot_predictions(dataframe, num_days):
     try:
@@ -155,7 +215,7 @@ def plot_predictions(dataframe, num_days):
 
         # Update layout
         fig.update_layout(
-            title=f"Actual vs Predicted Stock Closing Prices for {num_days} Days",
+            title=f"Actual vs Predicted Stock Closing Prices for the next {num_days}",
             xaxis_title="Date",
             yaxis_title="Closing Price",
             legend=dict(x=0, y=1),
@@ -166,7 +226,6 @@ def plot_predictions(dataframe, num_days):
         st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
         st.error(f"Failed to plot data. Error: {e}")
-
 
 def main():
     st.markdown("<h1 style='text-align: center;'>Stock Price Predictions</h1>", unsafe_allow_html=True)
@@ -180,17 +239,27 @@ def main():
 
     st.sidebar.title('User Input Features')
     chosen_model = st.sidebar.selectbox('Select Algorithm', ('Linear Regression', 'Decision Tree Regressor'))
-    option = st.sidebar.radio('Choose a forecast period:', ['1 week', '2 weeks', '1 month', 'Custom'])
+    option = st.sidebar.radio('Choose a forecast period:', ['7 days', '14 days', '30 days', 'Custom'])
 
     num_days = None
     if option == 'Custom':
         num_days = st.sidebar.number_input('Number of days:', min_value=1, value=5)
-        st.sidebar.info(f"Forecasting for {num_days} days.")
+
 
     if st.sidebar.button('Predict'):
         prediction_df = predict(spark, option, chosen_model, num_days)
         if prediction_df is not None:
-            plot_predictions(prediction_df, num_days or option)
+            # Create tabs for the two plots
+            tab1, tab2 = st.tabs(["Detailed Plot", "Overview Plot"])
+
+            with tab1:
+                st.markdown("### Detailed Plot")
+                plot_predictions_overview(prediction_df, num_days or option)
+
+            with tab2:
+                st.markdown("### Overview Plot")
+                plot_predictions(prediction_df, num_days or option)
+
 
 if __name__ == '__main__':
     torch.cuda.empty_cache()
