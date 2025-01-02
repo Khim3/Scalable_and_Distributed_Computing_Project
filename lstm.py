@@ -24,6 +24,6 @@ class SequentialLSTM(nn.Module):
         x, _ = self.lstm3(x)
         
         # Fully connected layers
-        x = self.relu(self.fc1(x[:, -1, :]))  # Only take the last time step output
+        x = self.relu(self.fc1(x[:, -1, :]))  
         x = self.fc2(x)
         return x

@@ -9,7 +9,6 @@ from pyspark.sql.types import ArrayType, DoubleType
 from pyspark.ml.evaluation import RegressionEvaluator
 import plotly.express as px
 import plotly.graph_objects as go
-from sklearn.preprocessing import MinMaxScaler
 import torch
 from lstm import SequentialLSTM
 import numpy as np
