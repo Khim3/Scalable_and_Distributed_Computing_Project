@@ -62,7 +62,7 @@ The project incorporates linear regression, decision tree regression, and LSTM m
 - ./data/: Contains historical stock data for Netflix and test files for model evaluation.
 - ./app.py: Streamlit-based web application for loading models, testing on test files, and visualizing predictions.
 - ./requirements.txt: List of Python libraries required for the project.
-- ./lsmt.py: Implementation of the LSTM model for stock price forecasting.
+- ./lsmt.py: Implementation of the LSTM model architecture for stock price forecasting.
 - ./scaler.pkl: Pre-trained MinMaxScaler for normalizing input data for LSTM model.
 - ./README.md: Project documentation with an overview, team members, installation instructions, and features.
 

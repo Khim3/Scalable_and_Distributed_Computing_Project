@@ -32,7 +32,7 @@ def initialize_spark():
 
 def load_data():
     try:
-        data = pd.read_csv('./NFLX.csv')
+        data = pd.read_csv('./data/NFLX.csv')
         return data        
     except Exception as e:
         st.error(f"Failed to load data. Error: {e}")
@@ -54,13 +54,13 @@ def load_lstm_model(model_path, input_size, output_size):
 def load_model(chosen_model):
     try:
         if chosen_model == 'Linear Regressor':
-            path = 'models/linear_regressor'
+            path = './models/linear_regressor'
             model = LinearRegressionModel.load(path)
         elif chosen_model == 'Decision Tree Regressor':
-            path = 'models/decision_tree_regressor'
+            path = './models/decision_tree_regressor'
             model = DecisionTreeRegressionModel.load(path)
         elif chosen_model == 'LSTM':
-            path = 'models/lstm.pth'
+            path = './models/lstm.pth'
             model = load_lstm_model(path, input_size=1, output_size=1)
         else:
             st.error("Invalid model selected.")
@@ -73,7 +73,7 @@ def load_model(chosen_model):
 
 def preprocess_lstm_data(look_back, num_days, scaler = scaler):
     try:
-        data = pd.read_csv('./test.csv').sort_values(by="Date")
+        data = pd.read_csv('./data/test.csv').sort_values(by="Date")
         scaled_data = scaler.transform(data[['Close']].values.astype('float32'))
 
         def create_dataset(dataset, look_back, num_days):
@@ -99,7 +99,7 @@ def preprocess_lstm_data(look_back, num_days, scaler = scaler):
 
 def load_data_for_prediction(spark, option, num_days=None, look_back=1, scaler=scaler):
     try:
-        data_test = spark.read.csv('./test.csv', header=True, inferSchema=True)
+        data_test = spark.read.csv('./data/test.csv', header=True, inferSchema=True)
         dataX, dates, actuals = preprocess_lstm_data(look_back, num_days, scaler=scaler)
 
         data_test = data_test.withColumn("Date", col("Date").cast("date"))
@@ -184,7 +184,7 @@ def predict(spark, option, chosen_model, num_days=None, scaler = scaler, look_ba
 def plot_predictions_overview(dataframe, num_days):
     try:
         # Load the original test dataset
-        test = pd.read_csv('./test.csv')
+        test = pd.read_csv('./data/test.csv')
 
         # Ensure the Date column is in the same format for merging
         test["Date"] = pd.to_datetime(test["Date"])
@@ -243,7 +243,7 @@ def plot_predictions_overview(dataframe, num_days):
 def plot_predictions(dataframe, num_days):
     try:
         # Load the original test dataset
-        test = pd.read_csv('./test.csv')
+        test = pd.read_csv('./data/test.csv')
 
         # Ensure the Date column is in the same format for merging
         test["Date"] = pd.to_datetime(test["Date"])
