@@ -37,6 +37,17 @@ The project incorporates linear regression, decision tree regression, and LSTM m
    ```
     or access the web application at: Stock Price Forecasting System [http://34.126.166.36:8501/]
 
+Or you could run it on Docker (make sure your internet is strong enough for downloading Python packages)
+
+1. Build docker images:
+   ```
+   docker build -t app .
+   ```
+2. Run images by docker compose
+   ```
+   docker compose up -d
+   ```
+
 ## Tools Used
 | **Tool**                     | **Purpose**                                                                                       |
 |------------------------------|---------------------------------------------------------------------------------------------------|
@@ -48,12 +59,25 @@ The project incorporates linear regression, decision tree regression, and LSTM m
 | **scikit-learn**             | Provide LSTM model 's evaluation metrics            |
 | **PyTorch**                  | Implement deep learning models for more advanced forecasting (LTSM) |
 | **GitHub**                   | Host the project codebase and facilitate version control and collaboration.                       |
+| **Docker**                   | For ease of deployment on cloud server or others machine                                          |
+| **GCP**                      | We use Google Cloud Platform to deployment our application                                        |
 
 ## Features
 - **Data Investigation and Preprocessing:** Handling missing values, adjusting for stock splits/dividends, and aligning timestamps.
 - **Predictive Modeling:** Implementing and comparing linear regression, decision tree regression, and LSTM models.
 - **Model Evaluation:** Using metrics such as MAE, RMSE, and directional accuracy to assess model performance.
 - **Streamlit UI:** A web-based interface for testing models with test files and visualizing predictions.
+
+## Deployment
+We use Docker to dockerize our application
+- **Portability:** Docker containers can run on any system with Docker installed.
+- **Consistency:** Ensures the application works seamlessly regardless of the host environment.
+- **Scalability:** Easily scale containers in a cloud environment like GCP.
+- **Isolation:** Applications run in separate containers, avoiding dependency conflicts.
+And use GCP for deploy for public use.
+- **Global Reach:** Provides low-latency access via Google's global network.
+- **Integration:** Seamlessly integrates with other Google services (e.g., Cloud Storage, BigQuery).
+- **Cost Optimization:** Pay-as-you-go model ensures efficient resource usage.
 
 ## Project Structure
 
