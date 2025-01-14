@@ -74,6 +74,7 @@ We use Docker to dockerize our application
 - **Consistency:** Ensures the application works seamlessly regardless of the host environment.
 - **Scalability:** Easily scale containers in a cloud environment like GCP.
 - **Isolation:** Applications run in separate containers, avoiding dependency conflicts.
+  
 And use GCP for deploy for public use.
 - **Global Reach:** Provides low-latency access via Google's global network.
 - **Integration:** Seamlessly integrates with other Google services (e.g., Cloud Storage, BigQuery).
