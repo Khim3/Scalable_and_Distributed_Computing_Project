@@ -35,7 +35,7 @@ The project incorporates linear regression, decision tree regression, and LSTM m
    ```bash
     streamlit run app.py
    ```
-    or access the web application at: Stock Price Forecasting System
+    or access the web application at: Stock Price Forecasting System [http://34.126.166.36:8501/]
 
 ## Tools Used
 | **Tool**                     | **Purpose**                                                                                       |
