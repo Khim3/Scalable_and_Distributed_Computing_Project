@@ -1,0 +1,26 @@
+services:
+  streamlit:
+    build:
+      context: .
+    container_name: streamlit-app
+    ports:
+      - "8501:8501"
+    networks:
+      - app-network
+    command: ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    depends_on:
+      - nginx
+      
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
